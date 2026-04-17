@@ -1,37 +1,31 @@
-# product-service
+# Product Service — Lab 2
 
 ![CI](https://github.com/yeab-samuel/product-service/actions/workflows/ci.yml/badge.svg)
 
-A RESTful product microservice built with Spring Boot 3.
+## Overview
+A RESTful Product Catalogue API built with Spring Boot 3, featuring full CRUD operations, input validation, global exception handling, and auto-generated Swagger documentation.
 
-## Getting Started
-
+## Setup & Run
 ```bash
 mvn spring-boot:run
 ```
+Then open: http://localhost:8080/swagger-ui.html
 
-## Endpoints
+## API Endpoints
 
-| Method | Path           | Description          |
-|--------|----------------|----------------------|
-| GET    | /products      | List all products    |
-| GET    | /products/{id} | Get product by ID    |
-| POST   | /products      | Create a new product |
-| GET    | /health        | Service health check |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| GET | /api/v1/products | 200 OK | List all products |
+| GET | /api/v1/products/{id} | 200 / 404 | Get product by ID |
+| POST | /api/v1/products | 201 Created | Create a new product |
+| PUT | /api/v1/products/{id} | 200 / 404 | Update a product |
+| DELETE | /api/v1/products/{id} | 204 / 404 | Delete a product |
 
-## Reflection
+## Swagger UI
+http://localhost:8080/swagger-ui.html
 
-**1. Purpose of the Service layer?**
-The Service layer holds all business logic and acts as the bridge between Controller and Repository. A Controller should never call a Repository directly because that would mix HTTP handling with data access, making the code harder to test and maintain.
-
-**2. Why layered architecture?**
-It separates concerns so each class has one job. This makes the codebase easier to test, extend, and understand.
-
-**3. Spring Data JPA advantages over plain JDBC?**
-First, free CRUD methods like findAll() and save() with no SQL needed. Second, derived query methods like findByNameContainingIgnoreCase() are auto-generated from the method name alone.
-
-**4. Why mock ProductRepository in tests?**
-To isolate ProductService and test only its logic. A real repository would require a database, making tests slow and fragile.
-
-**5. create-drop vs update?**
-create-drop rebuilds the schema fresh every run — ideal for development and testing. update preserves existing data — used in production where data must not be lost.
+## Run Tests
+```bash
+mvn test
+```
+Expected: Tests run: 10, Failures: 0
