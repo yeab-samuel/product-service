@@ -1,139 +1,176 @@
-# Product Service API
+# Product Service — Lab 3
 
-![CI](https://github.com/yeab-samuel/product-service/actions/workflows/ci.yml/badge.svg)
+[![Java CI](https://github.com/yeab-samuel/product-service/actions/workflows/ci.yml/badge.svg?branch=lab3)](https://github.com/yeab-samuel/product-service/actions/workflows/ci.yml)
+[![Java](https://img.shields.io/badge/Java-21-blue?logo=openjdk)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen?logo=springboot)](https://spring.io/projects/spring-boot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Overview
-
-A production-grade RESTful Product Catalogue API developed as part of the CTBE Software Engineering
-Enterprise Application Development module. Built with Spring Boot 3 and Java 21, the service
-implements full CRUD operations, Bean Validation, RFC 9457-compliant error responses,
-OpenAPI/Swagger documentation, and a comprehensive MockMvc integration test suite — all
-verified by a green GitHub Actions CI pipeline.
+A Spring Boot RESTful product catalogue API built as part of SECT-4221 Enterprise Application Development. Lab 3 migrates the Lab 2 H2 in-memory database to PostgreSQL using Flyway schema migrations, introduces a `Category` entity with JPA relationships, adds pagination and soft delete, and separates dev/prod Spring Profiles.
 
 ---
 
-## Technology Stack
+## Features
 
-| Technology | Version |
+- **PostgreSQL** database in production via Docker Compose
+- **Flyway** versioned schema migrations (V1–V5)
+- **Category entity** with `@OneToMany` / `@ManyToOne` JPA relationship to `Product`
+- **Soft delete** — products are flagged `deleted = true` rather than physically removed
+- **Pagination** on catalogue endpoints using Spring Data `Pageable`
+- **Product slug** — URL-friendly identifier auto-derived from product name
+- **Case-insensitive keyword search** across name and description
+- **Spring Profiles** — `dev` (H2 in-memory) and `prod` (PostgreSQL)
+- **Actuator** endpoints including `/actuator/flyway` for migration visibility
+- **OpenAPI / Swagger UI** at `/swagger-ui.html`
+- **17 passing tests** across controller, service, and repository layers
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
 |---|---|
-| Java | 21 |
-| Spring Boot | 3.3.5 |
-| Spring Data JPA | 3.3.5 |
-| H2 In-Memory Database | Runtime |
-| SpringDoc OpenAPI (Swagger) | 2.3.0 |
-| JUnit 5 + MockMvc | 3.3.5 |
-| Maven | 3.x |
+| Language | Java 21 |
+| Framework | Spring Boot 3.3.5 |
+| Database (prod) | PostgreSQL 15 |
+| Database (dev/test) | H2 in-memory |
+| Migrations | Flyway 10 |
+| ORM | Hibernate / Spring Data JPA |
+| Build | Maven 3 |
+| Containerisation | Docker Compose |
+| Docs | SpringDoc OpenAPI 3 |
+| Testing | JUnit 5, Mockito, MockMvc |
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- Java 21 or higher
-- Maven 3.x
 
-### Run the Application
+- Java 21+
+- Maven 3.9+
+- Docker Desktop (for the prod profile)
 
-    mvn spring-boot:run
+### Run in dev mode (H2)
 
-The application starts on port **8080** and seeds the database with three sample products automatically.
+```bash
+mvn spring-boot:run
+```
 
-### Run Tests
+The app starts on `http://localhost:8080` with an H2 in-memory database. Flyway migrations run automatically.
 
-    mvn test
+### Run in prod mode (PostgreSQL)
 
-Expected result: **10 tests, 0 failures, BUILD SUCCESS**
+```bash
+# 1. Start the database container
+docker compose up db -d
+
+# 2. Run the app with the prod profile
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+Environment variables used by the prod profile:
+
+| Variable | Default | Description |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/shopwave` | JDBC URL |
+| `DB_USER` | `shopwave` | Database username |
+| `DB_PASS` | `shopwave` | Database password |
 
 ---
 
 ## API Endpoints
 
-Base URL: `http://localhost:8080/api/v1/products`
+### Products (legacy v1)
 
-| Method | Path | Status | Description |
-|--------|------|--------|-------------|
-| GET | `/api/v1/products` | 200 OK | Returns a list of all products |
-| GET | `/api/v1/products/{id}` | 200 OK / 404 Not Found | Returns a single product by ID |
-| POST | `/api/v1/products` | 201 Created | Creates a new product |
-| PUT | `/api/v1/products/{id}` | 200 OK / 404 Not Found | Fully updates an existing product |
-| DELETE | `/api/v1/products/{id}` | 204 No Content / 404 Not Found | Deletes a product |
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/products` | List all products |
+| `POST` | `/api/products` | Create a product |
+| `GET` | `/api/products/{id}` | Get product by ID |
+| `PUT` | `/api/products/{id}` | Update a product |
+| `DELETE` | `/api/products/{id}` | Soft-delete a product |
 
-### Sample Request — POST /api/v1/products
+### Catalogue (v1 — paginated)
 
-    {
-      "name": "Webcam",
-      "price": 99.99,
-      "stockQty": 20,
-      "category": "Peripherals"
-    }
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/catalogue` | Paginated product list (with category) |
+| `GET` | `/api/v1/catalogue/search?q=keyword` | Case-insensitive search |
+| `GET` | `/api/v1/catalogue/{slug}` | Get product by slug |
 
-### Sample Response — 201 Created
+### Categories
 
-    {
-      "id": 4,
-      "name": "Webcam",
-      "price": 99.99,
-      "stockQty": 20,
-      "category": "Peripherals"
-    }
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/categories` | List all categories |
+| `POST` | `/api/v1/categories` | Create a category |
+| `DELETE` | `/api/v1/categories/{id}` | Delete a category |
 
-### Error Response — 404 Not Found (RFC 9457)
-
-    {
-      "type": "https://api.example.com/errors/not-found",
-      "title": "Resource Not Found",
-      "status": 404,
-      "detail": "Product 99 not found"
-    }
-
-### Error Response — 400 Bad Request (RFC 9457)
-
-    {
-      "type": "https://api.example.com/errors/validation",
-      "title": "Validation Error",
-      "status": 400,
-      "detail": "Name is required"
-    }
+Full interactive docs: **`http://localhost:8080/swagger-ui.html`**
 
 ---
 
-## Swagger UI
+## Database Migrations
 
-Interactive API documentation is available once the application is running:
+| Version | Description |
+|---|---|
+| V1 | Create `categories` table |
+| V2 | Create `products` table with FK to categories |
+| V3 | Add `deleted` column for soft delete |
+| V4 | Add `slug` column (zero-downtime, 3-step) |
+| V5 | Seed 5 default categories |
 
-- **Swagger UI:** http://localhost:8080/swagger-ui.html
-- **OpenAPI JSON spec:** http://localhost:8080/api-docs
+---
 
-![Swagger UI](docs/swagger-ui.png)
+## Running Tests
+
+```bash
+mvn clean test
+```
+
+```
+Tests run: 17, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
+```
+
+Test coverage includes:
+
+- `CatalogueControllerTest` — paginated catalogue endpoints (4 tests)
+- `ProductControllerTest` — CRUD product endpoints (9 tests)
+- `ProductServiceApplicationTests` — context loads (1 test)
+- `ProductRepositoryTest` — soft delete, search, eager category loading (3 tests)
 
 ---
 
 ## Project Structure
 
-    src/
-    ├── main/java/com/ctbe/yeabsirasamuel/productservice/
-    │   ├── controller/        # ProductController — HTTP layer
-    │   ├── service/           # ProductService — business logic
-    │   ├── repository/        # ProductRepository — data access
-    │   ├── model/             # Product — JPA entity
-    │   ├── dto/               # ProductRequest, ProductResponse — DTOs
-    │   ├── exception/         # ResourceNotFoundException, GlobalExceptionHandler
-    │   └── ProductServiceApplication.java
-    └── test/java/com/ctbe/yeabsirasamuel/productservice/
-        └── ProductControllerTest.java  # 8 MockMvc integration tests
+```
+src/
+├── main/
+│   ├── java/com/ctbe/yeabsirasamuel/productservice/
+│   │   ├── controller/         # REST controllers
+│   │   ├── dto/                # Request / response records
+│   │   ├── exception/          # Global error handling
+│   │   ├── mapper/             # Entity ↔ DTO mapping
+│   │   ├── model/              # JPA entities (Product, Category)
+│   │   ├── repository/         # Spring Data repositories
+│   │   └── service/            # Business logic
+│   └── resources/
+│       ├── db/migration/       # Flyway SQL migrations V1–V5
+│       ├── application.properties
+│       ├── application-dev.properties
+│       └── application-prod.properties
+└── test/
+    └── java/...                # JUnit 5 tests
+```
 
 ---
 
-## Postman Collection
+## CI/CD
 
-A ready-to-import Postman collection covering all endpoints is located at:
-
-    postman/product-service-lab2.json
-
-Import it into Postman via **File → Import** to test all endpoints immediately.
+GitHub Actions runs `mvn test` on every push to `lab3`. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ---
 
 ## Author
 
-Yeabsira Samuel — CTBE Software Engineering, Enterprise Application Development
+**Yeabsira Samuel** — SECT-4221 Enterprise Application Development, Lab 3

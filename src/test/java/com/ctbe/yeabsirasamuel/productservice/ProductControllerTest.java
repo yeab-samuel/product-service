@@ -10,6 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -27,7 +30,12 @@ class ProductControllerTest {
 
     @BeforeEach
     void setUp() {
-        Product p = repo.save(new Product("Test Laptop", 999.0, 10, "Electronics"));
+        Product p = repo.save(Product.builder()
+                .name("Test Laptop")
+                .price(new BigDecimal("999.00"))
+                .stock(10)
+                .slug("test-laptop")
+                .build());
         savedId = p.getId();
     }
 
@@ -42,8 +50,7 @@ class ProductControllerTest {
     void getById_returns200_whenExists() throws Exception {
         mockMvc.perform(get("/api/v1/products/" + savedId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name", is("Test Laptop")))
-                .andExpect(jsonPath("$.category", is("Electronics")));
+                .andExpect(jsonPath("$.name", is("Test Laptop")));
     }
 
     @Test

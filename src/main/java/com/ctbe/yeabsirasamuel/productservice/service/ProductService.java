@@ -6,6 +6,8 @@ import com.ctbe.yeabsirasamuel.productservice.exception.ResourceNotFoundExceptio
 import com.ctbe.yeabsirasamuel.productservice.model.Product;
 import com.ctbe.yeabsirasamuel.productservice.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -37,9 +39,9 @@ public class ProductService {
         Product existing = repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
         existing.setName(req.getName());
-        existing.setPrice(req.getPrice());
-        existing.setStockQty(req.getStockQty());
-        existing.setCategory(req.getCategory());
+        existing.setPrice(BigDecimal.valueOf(req.getPrice()));
+        existing.setStock(req.getStockQty());
+        // category stays as-is in old endpoint — use CatalogueService to change category
         return toResponse(repo.save(existing));
     }
 
@@ -52,12 +54,21 @@ public class ProductService {
 
     // ── Mapping helpers ───────────────────────────────────────
     private ProductResponse toResponse(Product p) {
-        return new ProductResponse(p.getId(), p.getName(),
-                p.getPrice(), p.getStockQty(), p.getCategory());
+        return new ProductResponse(
+                p.getId(),
+                p.getName(),
+                p.getPrice() != null ? p.getPrice().doubleValue() : 0.0,
+                p.getStock() != null ? p.getStock() : 0,
+                p.getCategory() != null ? p.getCategory().getName() : null
+        );
     }
 
     private Product toEntity(ProductRequest req) {
-        return new Product(req.getName(), req.getPrice(),
-                req.getStockQty(), req.getCategory());
+        return Product.builder()
+                .name(req.getName())
+                .price(BigDecimal.valueOf(req.getPrice()))
+                .stock(req.getStockQty())
+                .slug(req.getName().toLowerCase().replaceAll("[^a-z0-9]+", "-"))
+                .build();
     }
 }

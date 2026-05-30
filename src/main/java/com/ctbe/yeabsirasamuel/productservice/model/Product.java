@@ -1,50 +1,79 @@
 package com.ctbe.yeabsirasamuel.productservice.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "products")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@SQLDelete(sql = "UPDATE products SET deleted = TRUE WHERE id = ?")
+@SQLRestriction("deleted = FALSE")
 public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Name is required")
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
+    @NotBlank
+    @Size(max = 200)
     private String name;
 
-    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    @NotNull
+    @DecimalMin("0.00")
+    private BigDecimal price;
+
     @Column(nullable = false)
-    private double price;
+    @NotNull
+    @Min(0)
+    private Integer stock;
 
-    @Min(value = 0, message = "Stock quantity cannot be negative")
-    private int stockQty;
+    @Column(unique = true)
+    private String slug;
 
-    @NotBlank(message = "Category is required")
-    private String category;
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 
-    // ── Constructors ──────────────────────────────────────────
-    public Product() {}
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
-    public Product(String name, double price, int stockQty, String category) {
-        this.name = name;
-        this.price = price;
-        this.stockQty = stockQty;
-        this.category = category;
-    }
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    // ── Getters & Setters ─────────────────────────────────────
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public double getPrice() { return price; }
-    public int getStockQty() { return stockQty; }
-    public String getCategory() { return category; }
-
-    public void setId(Long id) { this.id = id; }
-    public void setName(String n) { this.name = n; }
-    public void setPrice(double p) { this.price = p; }
-    public void setStockQty(int q) { this.stockQty = q; }
-    public void setCategory(String c) { this.category = c; }
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }
